@@ -38,34 +38,21 @@ def get_latest_service_number():
 # Webhook endpoint
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.json
+    try:
+        # Log the incoming request data
+        data = request.json
+        print("Received data:", data)
 
-    # Extract new item details
-    item_id = data["event"]["pulseId"]
+        # Safely extract fields from the data
+        item_id = data.get("event", {}).get("pulseId", "Unknown")
+        print(f"Item ID: {item_id}")
 
-    # Get the latest service number
-    latest_number = get_latest_service_number()
-    new_service_number = f"{prefix}{latest_number + 1:03}"
+        return jsonify({"status": "success", "item_id": item_id})
+    except Exception as e:
+        # Log and return the error
+        print("Error occurred:", str(e))
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-    # Mutation to update the new item with a service number
-    mutation = f'''
-    mutation {{
-      change_simple_column_value (
-        board_id: {board_id},
-        item_id: {item_id},
-        column_id: "{column_id}",
-        value: "{new_service_number}"
-      ) {{
-        id
-      }}
-    }}
-    '''
-    response = requests.post(
-        url="https://api.monday.com/v2",
-        json={"query": mutation},
-        headers={"Authorization": api_key}
-    )
-    return jsonify(response.json())
 
 if __name__ == "__main__":
     app.run(port=5000)
